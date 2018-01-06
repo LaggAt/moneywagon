@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 
 from requests.auth import HTTPBasicAuth
 from moneywagon.core import (
@@ -125,9 +126,9 @@ class BlockCypher(Service):
         url = self.json_address_balance_url.format(address=address, crypto=crypto)
         response = self.get_url(url)
         if confirmations == 0:
-            return response.json()['final_balance'] / 1.0e8
+            return response.json(parse_float=Decimal)['final_balance'] / Decimal(1.0e8)
         elif confirmations == 1:
-            return response.json()['balance'] / 1.0e8
+            return response.json(parse_float=Decimal)['balance'] / Decimal(1.0e8)
         else:
             raise SkipThisService("Filtering by confirmations only for 0 and 1")
 
@@ -256,7 +257,7 @@ class BlockSeer(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = self.json_address_balance_url.format(address=address)
-        return self.get_url(url).json()['data']['balance'] / 1e8
+        return self.get_url(url).json(parse_float=Decimal)['data']['balance'] / Decimal(1e8)
 
     def get_transactions(self, crypo, address):
         url = self.json_txs_url.format(address=address)
@@ -284,23 +285,23 @@ class SmartBitAU(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "%s/address/%s" % (self.base_url, address)
-        r = self.get_url(url).json()
+        r = self.get_url(url).json(parse_float=Decimal)
 
-        confirmed = float(r['address']['confirmed']['balance'])
+        confirmed = Decimal(r['address']['confirmed']['balance'])
         if confirmations > 1:
             return confirmed
         else:
-            return confirmed + float(r['address']['unconfirmed']['balance'])
+            return confirmed + Decimal(r['address']['unconfirmed']['balance'])
 
     def get_balance_multi(self, crypto, addresses, confirmations=1):
         url = "%s/address/%s" % (self.base_url, ",".join(addresses))
-        response = self.get_url(url).json()
+        response = self.get_url(url).json(parse_float=Decimal)
 
         ret = {}
         for data in response['addresses']:
-            bal = float(data['confirmed']['balance'])
+            bal = Decimal(data['confirmed']['balance'])
             if confirmations == 0:
-                bal += float(data['unconfirmed']['balance'])
+                bal += Decimal(data['unconfirmed']['balance'])
             ret[data['address']] = bal
 
         return ret
@@ -443,7 +444,7 @@ class ChainSo(Service):
             self.base_url, crypto, address, confirmations
         )
         response = self.get_url(url)
-        return float(response.json()['data']['confirmed_balance'])
+        return Decimal(response.json(parse_float=Decimal)['data']['confirmed_balance'])
 
     def get_transactions(self, crypto, address, confirmations=1):
         url = "%s/get_tx_received/%s/%s" % (self.base_url, crypto, address)
@@ -554,8 +555,8 @@ class CoinPrism(Service):
 
     def get_balance(self, crypto, address, confirmations=None):
         url = "%s/addresses/%s" % (self.base_url, address)
-        resp = self.get_url(url).json()
-        return resp['balance'] / 1e8
+        resp = self.get_url(url).json(parse_float=Decimal)
+        return resp['balance'] / Decimal(1e8)
 
     def get_transactions(self, crypto, address):
         url = "%s/addresses/%s/transactions" % (self.base_url, address)
@@ -650,7 +651,7 @@ class BitEasy(Service):
     def get_balance(self, crypto, address, confirmations=1):
         url = "https://api.biteasy.com/blockchain/v1/addresses/" + address
         response = self.get_url(url)
-        return response.json()['data']['balance'] / 1e8
+        return response.json(parse_float=Decimal)['data']['balance'] / Decimal(1e8)
 
 
 class BlockChainInfo(Service):
@@ -667,7 +668,7 @@ class BlockChainInfo(Service):
     def get_balance(self, crypto, address, confirmations=1):
         url = "https://%s/address/%s?format=json" % (self.domain, address)
         response = self.get_url(url)
-        return float(response.json()['final_balance']) * 1e-8
+        return float(response.json(parse_float=Decimal)['final_balance']) * Decimal(1e-8)
 
     def get_single_transaction(self, crypto, txid):
         latest_block_number = self.get_block('btc', latest=True)['block_number']
@@ -769,7 +770,7 @@ class BitcoinAbe(Service):
     def get_balance(self, crypto, address, confirmations=1):
         url = self.base_url + "/q/addressbalance/" + address
         response = self.get_url(url)
-        return float(response.content)
+        return Decimal(response.content)
 
 
 class DogeChainInfo(Service):
@@ -781,7 +782,7 @@ class DogeChainInfo(Service):
 
     def get_balance(self, crypto, address, confirmations):
         url = "https://dogechain.info/api/v1/address/balance/" + address
-        response = self.get_url(url).json()
+        response = self.get_url(url).json(parse_float=Decimal)
         return response['balance']
 
     def get_unspent_outputs(self, crypto, address, confirmations=1):
@@ -850,7 +851,7 @@ class NXTPortal(Service):
     def get_balance(self, crypto, address, confirmations=1):
         url='http://nxtportal.org/nxt?requestType=getAccount&account=' + address
         response = self.get_url(url)
-        return float(response.json()['balanceNQT']) * 1e-8
+        return float(response.json(parse_float=Decimal)['balanceNQT']) * Decimal(1e-8)
 
     def get_transactions(self, crypto, address):
         url = 'http://nxtportal.org/transactions/account/%s?num=50' % address
@@ -883,7 +884,7 @@ class CryptoID(Service):
         url = "http://chainz.cryptoid.info/%s/api.dws?q=getbalance&a=%s&key=%s" % (
             crypto, address, self.api_key
         )
-        return float(self.get_url(url).content)
+        return Decimal(self.get_url(url).content)
 
     def get_single_transaction(self, crypto, txid):
         url = "http://chainz.cryptoid.info/%s/api.dws?q=txinfo&t=%s&key=%s" % (
@@ -946,7 +947,7 @@ class CryptapUS(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "http://cryptap.us/%s/explorer/q/addressbalance/%s" % (crypto, address)
-        return float(self.get_url(url).content)
+        return Decimal(self.get_url(url).content)
 
 
 class BitpayInsight(Service):
@@ -969,7 +970,7 @@ class BitpayInsight(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "%s://%s/%s/addr/%s/balance" % (self.protocol, self.domain, self.api_tag, address)
-        return float(self.get_url(url).content) / (1e8 if self.version < 5 else 1)
+        return Decimal(self.get_url(url).content) / (Decimal(1e8) if self.version < 5 else Decimal(1))
 
     def _format_tx(self, tx, addresses):
         matched_addresses = []
@@ -1174,11 +1175,11 @@ class BitGo(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "%s/api/v1/address/%s" % (self.base_url, address)
-        response = self.get_url(url).json()
+        response = self.get_url(url).json(parse_float=Decimal)
         if confirmations == 0:
-            return response['balance'] / 1e8
+            return response['balance'] / Decimal(1e8)
         if confirmations == 1:
-            return response['confirmedBalance'] / 1e8
+            return response['confirmedBalance'] / Decimal(1e8)
         else:
             raise SkipThisService('Filtering by confirmation only available for 0 or 1')
 
@@ -1299,12 +1300,12 @@ class Blockonomics(Service):
         else:
             body = {'addr': ' '.join(addresses)}
 
-        response = self.post_url(url, json.dumps(body)).json()
+        response = self.post_url(url, json.dumps(body)).json(parse_float=Decimal)
         balances = {}
         for data in response['response']:
-            confirmed = data['confirmed'] / 1e8
+            confirmed = data['confirmed'] / Decimal(1e8)
             if confirmations == 0:
-                balance = confirmed + (data['unconfirmed'] / 1e8)
+                balance = confirmed + (data['unconfirmed'] / Decimal(1e8))
             if confirmations == 1:
                 balance = confirmed
             else:
@@ -1433,12 +1434,12 @@ class Mintr(Service):
         url = "%s/api/address/balance/%s" % (
             self.domain.format(coin=self._get_coin(crypto)), address
         )
-        r = self.get_url(url).json()
+        r = self.get_url(url).json(parse_float=Decimal)
 
         if 'error' in r:
             raise Exception("Mintr returned error: %s" % r['error'])
 
-        return float(r['balance'])
+        return Decimal(r['balance'])
 
     def get_transactions(self, crypto, address):
         url = "%s/api/address/balance/%s/full" % (
@@ -1510,10 +1511,10 @@ class Iquidus(Service):
         url = "%s/ext/getbalance/%s" % (
             self.base_url.format(coin=self._get_coin(crypto)), address
         )
-        response = self.get_url(url).json()
+        response = self.get_url(url).json(parse_float=Decimal)
 
         if type(response) == dict and response.get('error') == 'address not found.':
-            return 0
+            return Decimal(0)
 
         return response
 
@@ -1651,7 +1652,7 @@ class ProHashing(Service):
         url = "https://%s/explorerJson/getAddress?address=%s&coin_id=%s" % (
             self.domain, address, self._get_coin(crypto)
         )
-        r = self.get_url(url).json()
+        r = self.get_url(url).json(parse_float=Decimal)
 
         if r.get('message', None):
             raise SkipThisService("Could not get Coin Info: %s" % r['message'])
@@ -1752,7 +1753,7 @@ class BlockExperts(Service):
         url = "%s/api?coin=%s&action=getbalance&address=%s" % (
             self.base, crypto, address
         )
-        return float(self.get_url(url).content)
+        return Decimal(self.get_url(url).content)
 
     def get_single_transaction(self, crypto, txid):
         url = "%s/include/ajax/ajax.tx.raw.php?coin_id=%s&tx=%s" % (
@@ -1812,12 +1813,12 @@ class BitcoinChain(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "%s/v1/address/%s" % (self.base, address)
-        return self.get_url(url).json()[0]['balance']
+        return self.get_url(url).json(parse_float=Decimal)[0]['balance']
 
     def get_balance_multi(self, crypto, addresses, confirmations=1):
         url = "%s/v1/address/%s" % (self.base, ','.join(addresses))
         ret = {}
-        for address_data in self.get_url(url).json():
+        for address_data in self.get_url(url).json(parse_float=Decimal):
             address = address_data['address']
             ret[address] = address_data['balance']
 
@@ -1856,7 +1857,7 @@ class CounterParty(Service):
         auth = HTTPBasicAuth(self.username, self.password)
         headers = {'content-type': 'application/json'}
         url = "%s://%s:%s/api/" % (self.protocol, self.domain, self.port)
-        return self.post_url(url, data=json.dumps(payload), auth=auth, headers=headers).json()
+        return self.post_url(url, data=json.dumps(payload), auth=auth, headers=headers).json(parse_float=Decimal)
 
     def get_balance(self, crypto, address, confirmations=1):
         payload = {
@@ -1870,7 +1871,7 @@ class CounterParty(Service):
         results = self.authed_post_url(payload)['result']
         for r in results:
             if r['address'] == address and r['asset'].lower() == crypto.lower():
-                return r['quantity'] / 1e8
+                return r['quantity'] / Decimal(1e8)
 
     def get_balance_multi(self, crypto, addresses, confirmations=1):
         payload = {
@@ -1885,7 +1886,7 @@ class CounterParty(Service):
         results = self.authed_post_url(payload)['result']
         ret = {}
         for r in results:
-            ret[r['address']] = r['quantity'] / 1e8
+            ret[r['address']] = r['quantity'] / Decimal(1e8)
 
         return ret
 
@@ -2011,13 +2012,13 @@ class CounterPartyChain(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "https://counterpartychain.io/api/balances/%s" % address
-        response = self.get_url(url).json()
+        response = self.get_url(url).json(parse_float=Decimal)
         if response['error']:
             return 0
 
         for balance in response['data']:
             if balance['asset'].upper() == crypto.upper():
-                return float(balance['amount'])
+                return Decimal(balance['amount'])
 
     def push_tx(self, crypto, tx_hex):
         from moneywagon import push_tx
@@ -2037,8 +2038,8 @@ class EtherChain(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "https://etherchain.org/api/account/%s" % address
-        data = self.get_url(url).json()['data']
-        return data[0]['balance'] / 1e18
+        data = self.get_url(url).json(parse_float=Decimal)['data']
+        return data[0]['balance'] / Decimal(1e18)
 
 class VTConline(Iquidus):
     service_id = 57
@@ -2053,8 +2054,8 @@ class Etherscan(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "https://api.etherscan.io/api?module=account&action=balance&address=%s&tag=latest" % address
-        response = self.get_url(url).json()
-        return int(response['result']) / 1e18
+        response = self.get_url(url).json(parse_float=Decimal)
+        return int(response['result']) / Decimal(1e18)
 
 
 class FeathercoinCom2(BitcoinAbe):
@@ -2128,9 +2129,9 @@ class ETCchain(Service):
         url = "%sgetAddressBalance?address=%s" % (self.base_url, address)
         r = self.get_url(url)
         if crypto.lower() == 'etc':
-            return r.json()['balance']
+            return r.json(parse_float=Decimal)['balance']
         if crypto.lower() == 'eth':
-            return r.json()['eth_balance']
+            return r.json(parse_float=Decimal)['eth_balance']
 
 
 class Bchain(Service):
@@ -2146,7 +2147,7 @@ class Bchain(Service):
     def get_balance(self, crypto, address, confirmations=1):
         url = "https://bchain.info/%s/api/balance/%s" % (crypto, address)
         resp = self.get_url(url)
-        return resp.json()['balance'] / 1e8
+        return resp.json(parse_float=Decimal)['balance'] / Decimal(1e8)
 
 class PressTab(Service):
     service_id = 79
@@ -2155,7 +2156,7 @@ class PressTab(Service):
         url = "http://www.presstab.pw/phpexplorer/%s/api.php?address=%s" % (
             crypto.upper(), address
         )
-        r = self.get_url(url).json()
+        r = self.get_url(url).json(parse_float=Decimal)
         return r['balance']
 
 class MyNXT(Service):
@@ -2163,15 +2164,15 @@ class MyNXT(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "https://www.mynxt.info/blockexplorer/nxt/api_getFullAccount.php?account=%s" % address
-        r = self.get_url(url).json()
-        return float(r['balanceNQT']) / 1e8
+        r = self.get_url(url).json(parse_float=Decimal)
+        return float(r['balanceNQT']) / Decimal(1e8)
 
 class ZChain(Service):
     service_id = 81
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "https://api.zcha.in/v2/mainnet/accounts/%s" % address
-        r = self.get_url(url).json()
+        r = self.get_url(url).json(parse_float=Decimal)
         return r['balance']
 
 
@@ -2246,7 +2247,7 @@ class WebBTC(Service):
         if crypto.lower() == 'nmc':
             coin_name = 'namecoin'
         url = "http://%s.webbtc.com/address/%s.json" % (coin_name, address)
-        return self.get_url(url).json()['balance'] / 1e8
+        return self.get_url(url).json(parse_float=Decimal)['balance'] / Decimal(1e8)
 
 
 class PesetacoinInfo(Iquidus):
@@ -2386,7 +2387,7 @@ class EthPlorer(Service):
 
     def get_balance(self, crypto, address, confirmations=1):
         url = "https://api.ethplorer.io/getAddressInfo/%s?apiKey=freekey" % address
-        resp = self.get_url(url).json()
+        resp = self.get_url(url).json(parse_float=Decimal)
         if crypto.lower() == 'eth':
             return resp['ETH']['balance']
         for token in resp['tokens']:
