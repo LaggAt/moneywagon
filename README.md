@@ -1,5 +1,3 @@
-![Imgur](http://i.imgur.com/kLJqwqs.png)
-
 # moneywagon
 
 
@@ -30,4 +28,4 @@ Currently I get different results from different services. I'm currently fixing 
 
 Help me reaching my goals:
 
-[Imgur](https://i.imgur.com/4RgMA5n.png)
+![Imgur](https://i.imgur.com/4RgMA5nm.png)
