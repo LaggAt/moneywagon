@@ -563,7 +563,7 @@ class CoinPrism(Service):
         transactions = []
         for tx in self.get_url(url).json(parse_float=Decimal):
             transactions.append(dict(
-                amount=sum([x['value'] / 1e8 for x in tx['outputs'] if address in x['addresses']]),
+                amount=Decimal(sum([Decimal(x['value']) / Decimal(1e8) for x in tx['outputs'] if address in x['addresses']])),
                 txid=tx['hash'],
                 date=arrow.get(tx['block_time']).datetime,
                 confirmations=tx['confirmations']
@@ -979,11 +979,11 @@ class BitpayInsight(Service):
         for address in addresses:
             for x in tx['vout']:
                 if address in x['scriptPubKey'].get('addresses', []):
-                    my_outs += float(x['value'])
+                    my_outs += Decimal(x['value'])
                     matched_addresses.append(address)
             for x in tx['vin']:
                 if address in x['addr']:
-                    my_ins += float(x['value'])
+                    my_ins += Decimal(x['value'])
                     matched_addresses.append(address)
 
         return dict(

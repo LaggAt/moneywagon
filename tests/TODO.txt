@@ -1,0 +1,11 @@
+TODO!
+
+Decimal handling:
+	float calculations are inacurate, I want to use Decimal instead. 
+	Starting with AddressBalance, HistoricalTransactions, work thru all Services.
+	
+Service-Specific TODO:
+	BitGo
+		HistoricalTransactions is wrong, BitGo stops after 25 transactions. see tests.
+		https://www.bitgo.com/api/v2/#pagination
+	...
