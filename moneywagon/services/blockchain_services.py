@@ -158,12 +158,12 @@ class BlockCypher(Service):
     def get_transactions(self, crypto, address, confirmations=1):
         url = self.json_txs_url.format(address=address, crypto=crypto)
         transactions = []
-        for tx in self.get_url(url).json().get('txrefs', []):
+        for tx in self.get_url(url).json(parse_float=Decimal).get('txrefs', []):
             if tx['confirmations'] < confirmations:
                 continue
             transactions.append(dict(
                 date=arrow.get(tx['confirmed']).datetime,
-                amount=tx['value'] / 1e8,
+                amount=tx['value'] / Decimal(1e8),
                 txid=tx['tx_hash'],
                 confirmations=tx['confirmations']
             ))
@@ -262,10 +262,10 @@ class BlockSeer(Service):
     def get_transactions(self, crypo, address):
         url = self.json_txs_url.format(address=address)
         transactions = []
-        for tx in self.get_url(url).json()['data']['address']['transactions']:
+        for tx in self.get_url(url).json(parse_float=Decimal)['data']['address']['transactions']:
             transactions.append(dict(
                 date=arrow.get(tx['time']).datetime,
-                amount=tx['delta'] / 1e8,
+                amount=tx['delta'] / Decimal(1e8),
                 txid=tx['hash'],
             ))
         return transactions
@@ -309,13 +309,13 @@ class SmartBitAU(Service):
     def get_transactions(self, crypto, address, confirmations=1):
         url = "%s/address/%s" % (self.base_url, address)
         transactions = []
-        for tx in self.get_url(url).json()['address']['transactions']:
-            out_amount = sum(float(x['value']) for x in tx['outputs'] if address in x['addresses'])
-            in_amount = sum(float(x['value']) for x in tx['inputs'] if address in x['addresses'])
+        for tx in self.get_url(url).json(parse_float=Decimal)['address']['transactions']:
+            out_amount = sum(Decimal(x['value']) for x in tx['outputs'] if address in x['addresses'])
+            in_amount = sum(Decimal(x['value']) for x in tx['inputs'] if address in x['addresses'])
             transactions.append(dict(
                 amount=out_amount - in_amount,
                 date=arrow.get(tx['time']).datetime,
-                fee=float(tx['fee']),
+                fee=Decimal(tx['fee']),
                 txid=tx['txid'],
                 confirmations=tx['confirmations'],
             ))
@@ -451,13 +451,13 @@ class ChainSo(Service):
         response = self.get_url(url)
 
         transactions = []
-        for tx in response.json()['data']['txs']:
+        for tx in response.json(parse_float=Decimal)['data']['txs']:
             tx_cons = int(tx['confirmations'])
             if tx_cons < confirmations:
                 continue
             transactions.append(dict(
                 date=arrow.get(tx['time']).datetime,
-                amount=float(tx['value']),
+                amount=Decimal(tx['value']),
                 txid=tx['txid'],
                 confirmations=tx_cons,
             ))
@@ -561,7 +561,7 @@ class CoinPrism(Service):
     def get_transactions(self, crypto, address):
         url = "%s/addresses/%s/transactions" % (self.base_url, address)
         transactions = []
-        for tx in self.get_url(url).json():
+        for tx in self.get_url(url).json(parse_float=Decimal):
             transactions.append(dict(
                 amount=sum([x['value'] / 1e8 for x in tx['outputs'] if address in x['addresses']]),
                 txid=tx['hash'],
@@ -860,7 +860,7 @@ class NXTPortal(Service):
         for tx in txs:
             transactions.append(dict(
                 date=arrow.get(tx['time']).datetime,
-                amount=tx['value'],
+                amount=Decimal(tx['value']),
                 txid=tx['txid'],
                 confirmations=tx['confirmations'],
             ))
@@ -998,7 +998,7 @@ class BitpayInsight(Service):
         url = "%s://%s/%s/txs/?address=%s" % (self.protocol, self.domain, self.api_tag, address)
         response = self.get_url(url)
         transactions = []
-        for tx in response.json()['txs']:
+        for tx in response.json(parse_float=Decimal)['txs']:
             transactions.append(self._format_tx(tx, [address]))
         return transactions
 
@@ -1006,7 +1006,7 @@ class BitpayInsight(Service):
         url = "%s://%s/%s/addrs/%s/txs" % (
             self.protocol, self.domain, self.api_tag, ','.join(addresses)
         )
-        r = self.get_url(url).json()
+        r = self.get_url(url).json(parse_float=Decimal)
         txs = []
         for tx in r['items']:
             txs.append(self._format_tx(tx, addresses))
@@ -1185,11 +1185,11 @@ class BitGo(Service):
 
     def get_transactions(self, crypto, address):
         url = "%s/api/v1/address/%s/tx" % (self.base_url, address)
-        response = self.get_url(url).json()
+        response = self.get_url(url).json(parse_float=Decimal)
 
         txs = []
         for tx in response['transactions']:
-            my_outs = [x['value'] for x in tx['entries'] if x['account'] == address]
+            my_outs = [(Decimal(x['value']) / Decimal(1E8)) for x in tx['entries'] if x['account'] == address]
 
             txs.append(dict(
                 amount=sum(my_outs),
@@ -1317,11 +1317,11 @@ class Blockonomics(Service):
 
     def get_transactions(self, crypto, address):
         url = "%s/api/searchhistory" % self.base_url
-        response = self.post_url(url, json.dumps({'addr': address})).json()
+        response = self.post_url(url, json.dumps({'addr': address})).json(parse_float=Decimal)
         txs = []
         for tx in response['history'] + response.get('pending', []):
             txs.append(dict(
-                amount=tx['value'] / 1e8,
+                amount=tx['value'] / Decimal(1e8),
                 date=arrow.get(tx['time']).datetime,
                 txid=tx['txid'],
             ))
@@ -1446,11 +1446,11 @@ class Mintr(Service):
             self.domain.format(coin=self._get_coin(crypto)), address
         )
         txs = []
-        for tx in self.get_url(url).json()['transactions']:
+        for tx in self.get_url(url).json(parse_float=Decimal)['transactions']:
             if not tx['sent'] and not tx['received']:
                 continue
 
-            amount = float(tx['sent'] or tx['received'])
+            amount = Decimal(tx['sent'] or tx['received'])
             txs.append(dict(
                 address=address,
                 amount=amount if tx['received'] else -1 * amount,
@@ -1521,7 +1521,7 @@ class Iquidus(Service):
     def get_transactions(self, crypto, address):
         domain = self.base_url.format(coin=self._get_coin(crypto))
         url = "%s/ext/getaddress/%s" % (domain, address)
-        r = self.get_url(url).json()
+        r = self.get_url(url).json(parse_float=Decimal)
         if 'error' in r and r['error'] == 'address not found.':
             return []
 
@@ -1665,7 +1665,7 @@ class ProHashing(Service):
             self.domain, params, address, self._get_coin(crypto)
         )
         txs = []
-        for tx in self.get_url(url).json()['data']:
+        for tx in self.get_url(url).json(parse_float=Decimal)['data']:
             txs.append(dict(
                 amount=tx['value'],
                 date=arrow.get(tx['blocktime']).datetime,
@@ -1826,7 +1826,7 @@ class BitcoinChain(Service):
 
     def get_transactions(self, crypto, address, confirmations=1):
         url = "%s/v1/address/txs/%s" % (self.base, address)
-        response = self.get_url(url).json()[0]
+        response = self.get_url(url).json(parse_float=Decimal)[0]
         txs = []
         for tx in response:
             txs.append(dict(
