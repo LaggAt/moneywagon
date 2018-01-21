@@ -995,11 +995,16 @@ class BitpayInsight(Service):
         )
 
     def get_transactions(self, crypto, address):
-        url = "%s://%s/%s/txs/?address=%s" % (self.protocol, self.domain, self.api_tag, address)
-        response = self.get_url(url)
+        pageNum = 0
+        is_completed = False
         transactions = []
-        for tx in response.json(parse_float=Decimal)['txs']:
-            transactions.append(self._format_tx(tx, [address]))
+        while not is_completed:
+            url = "%s://%s/%s/txs/?address=%s&pageNum=%s" % (self.protocol, self.domain, self.api_tag, address, pageNum)
+            response = self.get_url(url).json(parse_float=Decimal)
+            for tx in response['txs']:
+                transactions.append(self._format_tx(tx, [address]))
+            is_completed = pageNum == response['pagesTotal']
+            pageNum += 1
         return transactions
 
     def get_transactions_multi(self, crypto, addresses):
