@@ -1184,19 +1184,23 @@ class BitGo(Service):
             raise SkipThisService('Filtering by confirmation only available for 0 or 1')
 
     def get_transactions(self, crypto, address):
-        url = "%s/api/v1/address/%s/tx" % (self.base_url, address)
-        response = self.get_url(url).json(parse_float=Decimal)
-
+        limit = 50
+        skip = 0
+        is_completed = False
         txs = []
-        for tx in response['transactions']:
-            my_outs = [(Decimal(x['value']) / Decimal(1E8)) for x in tx['entries'] if x['account'] == address]
-
-            txs.append(dict(
-                amount=sum(my_outs),
-                date=arrow.get(tx['date']).datetime,
-                txid=tx['id'],
-                confirmations=tx['confirmations'],
-            ))
+        while not is_completed:
+            url = "%s/api/v1/address/%s/tx?limit=%s&skip=%s" % (self.base_url, address, limit, skip)
+            response = self.get_url(url).json(parse_float=Decimal)
+            for tx in response['transactions']:
+                my_outs = [(Decimal(x['value']) / Decimal(1E8)) for x in tx['entries'] if x['account'] == address]
+                txs.append(dict(
+                    amount=sum(my_outs),
+                    date=arrow.get(tx['date']).datetime,
+                    txid=tx['id'],
+                    confirmations=tx['confirmations'],
+                ))
+            is_completed = skip + limit >= response['total']
+            skip += limit
         return txs
 
     def get_unspent_outputs(self, crypto, address, confirmations=1):
