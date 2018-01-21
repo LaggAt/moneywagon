@@ -1,5 +1,3 @@
-![Imgur](http://i.imgur.com/kLJqwqs.png)
-
 # moneywagon
 
 
@@ -9,56 +7,31 @@ alternative to the outdated "SPV" method of building lightweight cryptocurrency
 services.
 
 
-## Features
-* Lightweight wallet functionality - Use Moneywagon to build a bitcoin enabled device
-Works on all cryptocurrencies, including BTC, LTC, PPC, DOGE, VTC, MYR.
-    1. Get current crypto/fiat exchange rate
-    2. Get crypto balance for address
-    3. Get historical transactions for crypto address
-    4. Get unspent outputs
-    5. Get historical crypto/fiat price.
-    6. Get optimal transaction fee (BTC only)
-    7. Generate new crypto private/pubic keys supporting both 'WIF' and 'compressed' encodings.
+## Main developer
 
-General Cryptocurrency Features:
-* Bip38 support
-* Multi-sig support - coming soon
-* HD-wallet support - coming soon
+The scripts are developed [over here, see priestc's repository.](https://github.com/priestc/moneywagon)
+His donation btc address is:
 
-##  Prerequisites modules (for BIP38 & installation of module via pip)
+1HWpyFJ7N6rvFkq3ZCMiFnqM6hviNFmG5X
 
-```
-$ pip install scrypt
-$ pip install pycrypto
-```
+## This fork
 
-# Installation
+I decided to do my changes in an own fork, and maybe do a pull request later. These are the goals I want to reach here:
 
-```
-$ pip install moneywagon
-```
+* Use Decimal instead of float. 
+This is a breaking change, as applications using float's usually couldn't work with Decimals without code change. BUT: Decimals are always exact, floats aren't. Therefore for currencies Decimal should be used. https://en.wikipedia.org/wiki/Floating-point_arithmetic#Accuracy_problems
 
-# Documentation
+* Test and document functions. For now: AddressBalance and HistoricalTransactions.
+Currently I get different results from different services. I'm currently fixing this. See /tests directory.
 
-* [Supported Services](https://github.com/priestc/moneywagon/wiki/Supported-Services)
-* [Exchange Operations](https://github.com/priestc/moneywagon/wiki/Exchange-Operations)
-  * [Service Support List](https://github.com/priestc/moneywagon/wiki/Exchange-Service-Support-Table)
-* [Blockchain Operations](https://github.com/priestc/moneywagon/wiki/Blockchain-Operations)
-* [Command Line Interface](https://github.com/priestc/moneywagon/wiki/Command-Line-Interface)
-* [Python Interface](https://github.com/priestc/moneywagon/wiki/Python-Interface)
-* [Creating Transactions](https://github.com/priestc/moneywagon/wiki/Creating-Transactions)
-* [Service Modes](https://github.com/priestc/moneywagon/wiki/Service-Modes)
-* [Tools](https://github.com/priestc/moneywagon/wiki/Tools)
+## Development
 
+Check out to_decimal_patch, review the tests/ subdirectory and start coding. On further questions: ask.
 
-# Contributing
+## Donate
 
+Help me reaching my goals:
 
-If you would like to add a new service, feel free to make a pull request.
-If you discover a service is no longer working feel free to create a github issue and some will fix it shortly.
+![Imgur](https://i.imgur.com/4RgMA5nm.png)
 
-
-# Donations
-
-
-If you would like to send a donation to support development, please send BTC here: 1HWpyFJ7N6rvFkq3ZCMiFnqM6hviNFmG5X
+17Xz11thcE16siwqSGSS9ANhVrqvfT2fWH
