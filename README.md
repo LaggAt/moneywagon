@@ -24,6 +24,10 @@ This is a breaking change, as applications using float's usually couldn't work w
 * Test and document functions. For now: AddressBalance and HistoricalTransactions.
 Currently I get different results from different services. I'm currently fixing this. See /tests directory.
 
+## Development
+
+Check out to_decimal_patch, review the tests/ subdirectory and start coding. On further questions: ask.
+
 ## Donate
 
 Help me reaching my goals:
