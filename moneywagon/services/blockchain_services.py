@@ -158,15 +158,22 @@ class BlockCypher(Service):
     def get_transactions(self, crypto, address, confirmations=1):
         url = self.json_txs_url.format(address=address, crypto=crypto)
         transactions = []
-        for tx in self.get_url(url).json(parse_float=Decimal).get('txrefs', []):
+        txs = self.get_url(url).json(parse_float=Decimal).get('txrefs', [])
+        for tx in txs:
             if tx['confirmations'] < confirmations:
                 continue
-            transactions.append(dict(
-                date=arrow.get(tx['confirmed']).datetime,
-                amount=tx['value'] / Decimal(1e8),
-                txid=tx['tx_hash'],
-                confirmations=tx['confirmations']
-            ))
+            sign = Decimal(1) if (tx['tx_input_n'] < 0) else Decimal(-1)
+            amount = tx['value'] / Decimal(1e8) * sign
+            if len(transactions) and transactions[-1]['txid'] == tx['tx_hash']:
+                # cumulate to same address
+                transactions[-1]['amount'] += amount
+            else:
+                transactions.append(dict(
+                    date=arrow.get(tx['confirmed']).datetime,
+                    amount=amount,
+                    txid=tx['tx_hash'],
+                    confirmations=tx['confirmations']
+                ))
         return transactions
 
     def get_single_transaction(self, crypto, txid):
@@ -1002,7 +1009,9 @@ class BitpayInsight(Service):
             url = "%s://%s/%s/txs/?address=%s&pageNum=%s" % (self.protocol, self.domain, self.api_tag, address, pageNum)
             response = self.get_url(url).json(parse_float=Decimal)
             for tx in response['txs']:
-                transactions.append(self._format_tx(tx, [address]))
+                # we sometimes get duplicates between pages
+                if tx['txid'] not in [t['txid'] for t in transactions]:
+                    transactions.append(self._format_tx(tx, [address]))
             is_completed = pageNum == response['pagesTotal']
             pageNum += 1
         return transactions

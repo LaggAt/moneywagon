@@ -41,7 +41,8 @@ class MoneywagonTestCase(unittest.TestCase):
         for service in ALL_SERVICES:
             with self.subTest(service=service.name):
                 try:
-                    txLst = HistoricalTransactions(services=[service], verbose=True).action('btc', self.address)
+                    hTxInstance = HistoricalTransactions(services=[service], verbose=True)
+                    txLst = hTxInstance.action('btc', self.address)
                     for tx in txLst:
                         self.assertTrue(type(tx['amount']) is Decimal)
                     # use only tx with >= 1 confirmations
@@ -69,6 +70,8 @@ class MoneywagonTestCase(unittest.TestCase):
                     self.skipTest("NotImplementedError")
                 except IOError as ex:
                     self.skipTest("IOError")
+                except AssertionError as aEx:
+                    raise
 
 if __name__ == '__main__':
     unittest.main()
