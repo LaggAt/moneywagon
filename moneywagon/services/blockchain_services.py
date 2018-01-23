@@ -454,20 +454,34 @@ class ChainSo(Service):
         return Decimal(response.json(parse_float=Decimal)['data']['confirmed_balance'])
 
     def get_transactions(self, crypto, address, confirmations=1):
-        url = "%s/get_tx_received/%s/%s" % (self.base_url, crypto, address)
-        response = self.get_url(url)
-
         transactions = []
-        for tx in response.json(parse_float=Decimal)['data']['txs']:
-            tx_cons = int(tx['confirmations'])
-            if tx_cons < confirmations:
-                continue
-            transactions.append(dict(
-                date=arrow.get(tx['time']).datetime,
-                amount=Decimal(tx['value']),
-                txid=tx['txid'],
-                confirmations=tx_cons,
-            ))
+        for endpoint in ['get_tx_received', 'get_tx_spent']:
+            sign = Decimal(1) if endpoint=='get_tx_received' else Decimal(-1)
+            done = False
+            last_txid = ''
+            while not done:
+                url = "%s/%s/%s/%s/%s" % (self.base_url, endpoint, crypto, address, last_txid)
+                response = self.get_url(url).json(parse_float=Decimal)
+                done = True
+                for tx in response['data']['txs']:
+                    tx_cons = int(tx['confirmations'])
+                    if tx_cons < confirmations:
+                        continue
+                    txid = tx['txid']
+                    amount = Decimal(tx['value']) * sign
+                    idx = next((index for (index, d) in enumerate(transactions) if d["txid"] == txid), None)
+                    if idx:
+                        transactions[idx]['amount'] += amount
+                    else:
+                        transactions.append(dict(
+                            date=arrow.get(tx['time']).datetime,
+                            amount=amount,
+                            txid=txid,
+                            confirmations=tx_cons))
+                    # we still get tx's, we need to continue
+                    done = False
+                    last_txid = tx['txid']
+                pass
 
         return transactions
 

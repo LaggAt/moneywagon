@@ -61,7 +61,7 @@ class MoneywagonTestCase(unittest.TestCase):
                     if prevSum is not None:
                         self.assertEqual(prevSum, thisSum, "Transations sum does not match previous sum.")
                     prevSum = thisSum
-                    print("%s: %s btc, txid's = %s." % (service.name, thisSum, len(txIdLst)))
+                    print("%s OK: %s btc, txid's = %s." % (service.name, thisSum, len(txIdLst)))
                 except CurrencyNotSupported as ex:
                     self.skipTest("CurrencyNotSupported")
                 except NoService as ex:
@@ -71,6 +71,8 @@ class MoneywagonTestCase(unittest.TestCase):
                 except IOError as ex:
                     self.skipTest("IOError")
                 except AssertionError as aEx:
+                    print("'" + service.name + "' failed:")
+                    print(repr(aEx))
                     raise
 
 if __name__ == '__main__':
