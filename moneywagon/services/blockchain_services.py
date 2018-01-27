@@ -2411,5 +2411,5 @@ class Btgexp(Iquidus):
 class MonaInsight(BitpayInsight):
     service_id = 146
     domain = 'mona.chainsight.info'
-    supported_crypto = ['mona']
+    supported_cryptos = ['mona']
     version = 0.2
