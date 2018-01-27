@@ -63,6 +63,7 @@ class Service(object):
     socketio_url = None
     exchange_fee_rate = None
     api_key = False
+    symbol_mapping = None
 
     @ClassProperty
     @classmethod
@@ -113,18 +114,21 @@ class Service(object):
         such as SkipThisService
         """
         if response.status_code == 500:
-            raise SkipThisService("500 - " + response.content)
+            raise ServiceError("500 - " + response.content)
 
         if response.status_code == 503:
             if "DDoS protection by Cloudflare" in response.content:
-                raise SkipThisService("Foiled by Cloudfare's DDoS protection")
-            raise SkipThisService("503 - Temporarily out of service.")
+                raise ServiceError("Foiled by Cloudfare's DDoS protection")
+            raise ServiceError("503 - Temporarily out of service.")
 
         if response.status_code == 429:
-            raise SkipThisService("429 - Too many requests")
+            raise ServiceError("429 - Too many requests")
 
         if response.status_code == 404:
-            raise SkipThisService("404 - Not Found")
+            raise ServiceError("404 - Not Found")
+
+        if response.status_code == 400:
+            raise ServiceError("400 - Bad Request")
 
     def convert_currency(self, base_fiat, base_amount, target_fiat):
         """
@@ -144,19 +148,42 @@ class Service(object):
         """
         raise NotImplementedError()
 
-    def fix_symbol(self, symbol):
+    def fix_symbol(self, symbol, reverse=False):
         """
         In comes a moneywagon format symbol, and returned in the symbol converted
         to one the service can understand.
         """
+        if not self.symbol_mapping:
+            return symbol
+
+        for old, new in self.symbol_mapping:
+            if reverse:
+                if symbol == new:
+                    return old
+            else:
+                if symbol == old:
+                    return new
+
         return symbol
 
-    def parse_market(self, market):
+    def parse_market(self, market, split_char='_'):
         """
         In comes the market identifier directly from the service. Returned is
         the crypto and fiat identifier in moneywagon format.
         """
-        raise NotImplementedError()
+        crypto, fiat = market.lower().split(split_char)
+        return (
+            self.fix_symbol(crypto, reverse=True),
+            self.fix_symbol(fiat, reverse=True)
+        )
+
+    def make_market(self, crypto, fiat):
+        """
+        Convert a crypto and fiat to a "market" string. All exchanges use their
+        own format for specifying markets. Subclasses can define their own
+        implementation.
+        """
+        return ("%s_%s" % (self.fix_symbol(crypto), self.fix_symbol(fiat))).lower()
 
     def make_rpc_call(self, args, internal=False, skip_json=False):
         cmd = [self.cli_path] + [str(a) for a in args]
