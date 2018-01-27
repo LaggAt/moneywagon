@@ -36,20 +36,31 @@ class MoneywagonTestCase(unittest.TestCase):
     def test_HistoricalTransactions(self):
         # use a single service, get historical transactions
         # I'm getting decimals, but I get different balance sums and different transactions for each service!
+        okLst = []
+        asset = 'btc'
         prevTxIdSet = []
+        prevTxLst = []
         prevSum = self.balance # start from balance above
         for service in ALL_SERVICES:
-            with self.subTest(service=service.name):
+            with self.subTest(service=service.__name__):
                 try:
                     hTxInstance = HistoricalTransactions(services=[service], verbose=True)
-                    txLst = hTxInstance.action('btc', self.address)
+                    txLst = hTxInstance.action(asset, self.address)
+                    self.assertFalse(len(txLst) == 0, "Got empty transaction list.")
                     for tx in txLst:
+                        # check for Decimal values
                         self.assertTrue(type(tx['amount']) is Decimal)
+                        # amount is the same as in previous result?
+                        prevTxFiltered = [t for t in prevTxLst if t['txid'] == tx['txid']]
+                        if prevTxFiltered:
+                            #if we already had this tx, amount must match
+                            self.assertEqual(prevTxFiltered[0]['amount'], tx['amount'], "Amounts for tx %s do not match." % (tx['txid'],))
+                    prevTxLst = txLst
                     # use only tx with >= 1 confirmations
                     txLst = [tx for tx in txLst if tx['confirmations'] >= 1]
                     # no duplicate txid
                     txIdLst = [tx['txid'] for tx in txLst]
-                    self.assertEqual(len(txIdLst), len(set(txIdLst)), "Txid's are not unique")
+                    self.assertEqual(len(txIdLst), len(set(txIdLst)), "Txid's are not unique.")
                     txIdSet = set(txIdLst)
                     # check data against previous result:
                     # same txid's
@@ -62,6 +73,7 @@ class MoneywagonTestCase(unittest.TestCase):
                         self.assertEqual(prevSum, thisSum, "Transations sum does not match previous sum.")
                     prevSum = thisSum
                     print("%s OK: %s btc, txid's = %s." % (service.name, thisSum, len(txIdLst)))
+                    okLst.append(service.__name__)
                 except CurrencyNotSupported as ex:
                     self.skipTest("CurrencyNotSupported")
                 except NoService as ex:
@@ -74,6 +86,15 @@ class MoneywagonTestCase(unittest.TestCase):
                     print("'" + service.name + "' failed:")
                     print(repr(aEx))
                     raise
+        # ok, we mis-use the test here to write a list of tested, usable services, but well ...
+        servicesLst = "tested_services_tx_" + asset + " = [" + ", ".join(okLst) + "]"
+        with open("../moneywagon/services/tested_services.py", "w") as f:
+            f.write("\n".join([
+                "from .blockchain_services import *",
+                "from .exchange_services import *",
+                "",
+                servicesLst]))
+        print(servicesLst)
 
 if __name__ == '__main__':
     unittest.main()

@@ -316,16 +316,19 @@ class SmartBitAU(Service):
     def get_transactions(self, crypto, address, confirmations=1):
         url = "%s/address/%s" % (self.base_url, address)
         transactions = []
-        for tx in self.get_url(url).json(parse_float=Decimal)['address']['transactions']:
-            out_amount = sum(Decimal(x['value']) for x in tx['outputs'] if address in x['addresses'])
-            in_amount = sum(Decimal(x['value']) for x in tx['inputs'] if address in x['addresses'])
-            transactions.append(dict(
-                amount=out_amount - in_amount,
-                date=arrow.get(tx['time']).datetime,
-                fee=Decimal(tx['fee']),
-                txid=tx['txid'],
-                confirmations=tx['confirmations'],
-            ))
+        while url:
+            result = self.get_url(url).json(parse_float=Decimal)
+            for tx in result['address']['transactions']:
+                out_amount = sum(Decimal(x['value']) for x in tx['outputs'] if address in x['addresses'])
+                in_amount = sum(Decimal(x['value']) for x in tx['inputs'] if address in x['addresses'])
+                transactions.append(dict(
+                    amount=out_amount - in_amount,
+                    date=arrow.get(tx['time']).datetime,
+                    fee=Decimal(tx['fee']),
+                    txid=tx['txid'],
+                    confirmations=tx['confirmations'],
+                ))
+            url = result['address']['transaction_paging']['next_link']
         return transactions
 
     def get_unspent_outputs(self, crypto, address, confirmations=1):
@@ -583,8 +586,10 @@ class CoinPrism(Service):
         url = "%s/addresses/%s/transactions" % (self.base_url, address)
         transactions = []
         for tx in self.get_url(url).json(parse_float=Decimal):
+            outputsSum = Decimal(sum([Decimal(x['value']) / Decimal(1e8) for x in tx['outputs'] if address in x['addresses']]))
+            inputsSum = Decimal(sum([Decimal(x['value']) / Decimal(1e8) for x in tx['inputs'] if address in x['addresses']]))
             transactions.append(dict(
-                amount=Decimal(sum([Decimal(x['value']) / Decimal(1e8) for x in tx['outputs'] if address in x['addresses']])),
+                amount = outputsSum - inputsSum,
                 txid=tx['hash'],
                 date=arrow.get(tx['block_time']).datetime,
                 confirmations=tx['confirmations']
@@ -1926,15 +1931,15 @@ class CounterParty(Service):
         txs = []
         for i, results in enumerate([credits, debits]):
             if i == 0:
-                sign = 1
+                sign = Decimal(1)
             else:
-                sign = -1
+                sign = Decimal(-1)
 
             for tx in results:
                 if tx['asset'].upper() != crypto.upper():
                     continue
                 txs.append(dict(
-                    amount=tx['quantity'] / 1e8 * sign,
+                    amount=Decimal(tx['quantity']) / Decimal(1e8) * sign,
                     txid=tx['event'],
                     address=tx['address'],
                     date=None,
@@ -1954,7 +1959,8 @@ class CounterParty(Service):
             "jsonrpc": "2.0",
             "id": 0,
         }
-        credits = self.authed_post_url(payload)['result']
+        credits_response = self.authed_post_url(payload)
+        credits = credits_response['result']
 
         payload = {
             "method": "get_debits",
@@ -1967,7 +1973,8 @@ class CounterParty(Service):
             "jsonrpc": "2.0",
             "id": 0,
         }
-        debits = self.authed_post_url(payload)['result']
+        debits_response = self.authed_post_url(payload)
+        debits = debits_response['result']
         return self._format_txs(credits, debits)
 
     def get_transactions_multi(self, crypto, addresses):
@@ -2285,7 +2292,7 @@ class WebBTC(Service):
 class PesetacoinInfo(Iquidus):
     service_id = 103
     base_url = "http://explorer.pesetacoin.info"
-
+    supported_cryptos = ['ptc']
 
 class VChainInfo(Iquidus):
     service_id = 104
@@ -2434,7 +2441,7 @@ class VertcoinInfo(Iquidus):
 class THCBlock(Iquidus):
     service_id = 136
     base_url = "http://thcblock.ga"
-    supported_crypto = ['thc']
+    supported_cryptos = ['thc']
 
 class Btgexp(Iquidus):
     service_id = 137

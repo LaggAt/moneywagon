@@ -1,5 +1,6 @@
 from .blockchain_services import *
 from .exchange_services import *
+from .tested_services import *
 
 def get_service(name=None, id=None):
     from moneywagon import ALL_SERVICES
